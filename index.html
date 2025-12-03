@@ -83,6 +83,8 @@
             padding: 20px; border: 2px dashed var(--primary-color); border-radius: var(--border-radius);
             background-color: #f0f7ff; color: var(--primary-color); font-weight: bold; cursor: pointer;
             text-align: center; margin-bottom: 10px;
+            /* Garante texto maiúsculo */
+            text-transform: uppercase; 
         }
 
         #preview-img { width: 100%; border-radius: 8px; margin-top: 10px; display: none; border: 1px solid #ddd; }
@@ -219,9 +221,7 @@
                 <button type="button" class="geo-btn" id="btnGeo" onclick="capturarLocalizacao()">
                     📍 Obter Localização (Google Maps)
                 </button>
-                <!-- Container para o link do Maps -->
                 <div id="geo-texto" style="text-align:center; margin-top:10px; font-size:0.9rem;"></div>
-                
                 <input type="hidden" id="gps_lat">
                 <input type="hidden" id="gps_long">
             </div>
@@ -239,7 +239,8 @@
             </p>
             
             <label class="camera-btn">
-                <span>📸 Tirar Selfie</span>
+                <span>📸 TIRAR SELFIE</span>
+                <!-- capture="user" força câmera frontal. Se falhar, accept="image/*" ainda deve permitir escolher a câmera -->
                 <input type="file" id="foto_input" accept="image/*" capture="user" style="display: none;" onchange="processarFoto(this)">
             </label>
             <img id="preview-img">
@@ -294,7 +295,6 @@
         const { jsPDF } = window.jspdf;
         const dataElement = document.getElementById('data-hoje');
         const hoje = new Date();
-        // CORREÇÃO: Removeu "Garopaba," da data
         dataElement.innerText = `${hoje.toLocaleDateString('pt-BR')}`;
         
         // Variáveis globais para imagens
@@ -305,40 +305,32 @@
             const btn = document.getElementById('btnGeo');
             const txt = document.getElementById('geo-texto');
             
-            // Verifica se a API de geolocalização existe
             if (!navigator.geolocation) {
                 txt.innerHTML = "<div class='gps-error-msg'>Seu navegador não suporta geolocalização.</div>";
                 return;
             }
 
-            // CORREÇÃO: Verifica se está em um contexto seguro (HTTPS) e alerta o usuário se não estiver
             if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-                 // Se não for HTTPS, mostra erro específico e não tenta capturar
                  txt.innerHTML = "<div class='gps-error-msg'>⚠️ <strong>Erro de Segurança:</strong> O GPS requer uma conexão segura (HTTPS).<br>Se você estiver testando localmente, use localhost. Se estiver em produção, verifique o certificado SSL.</div>";
                  return;
             }
             
             btn.innerHTML = "⏳ Buscando satélite...";
-            txt.innerHTML = ""; // Limpa mensagens anteriores
+            txt.innerHTML = "";
 
-            
             navigator.geolocation.getCurrentPosition(
                 (pos) => {
                     const lat = pos.coords.latitude;
                     const long = pos.coords.longitude;
                     
-                    // Salva nos inputs escondidos
                     document.getElementById('gps_lat').value = lat;
                     document.getElementById('gps_long').value = long;
                     
-                    // Cria URL do Google Maps
                     const mapsUrl = `https://www.google.com/maps?q=${lat},${long}`;
                     
-                    // Atualiza botão
                     btn.classList.add('geo-success');
                     btn.innerHTML = "✅ Localização Capturada";
                     
-                    // Mostra link na tela para o usuário conferir
                     txt.innerHTML = `
                         <a href="${mapsUrl}" target="_blank" class="maps-link">
                             🗺️ Abrir no Google Maps
@@ -368,22 +360,19 @@
                     }
                     
                     btn.innerHTML = "📍 Tentar Novamente";
-                    // Usa a nova classe de erro para melhor visualização
                     txt.innerHTML = `<div class='gps-error-msg'><strong>Erro: ${msg}</strong><br>${detalhe}</div>`;
                 },
-                { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 } // Aumentei o timeout para 15s e forcei nova busca
+                { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
             );
         }
 
-        // --- 3. Câmera e Imagens (Com Timestamp) ---
+        // --- 3. Câmera e Imagens (Com Timestamp CORRIGIDO) ---
         function processarFoto(input) {
             if (input.files && input.files[0]) {
                 const reader = new FileReader();
                 reader.onload = function(e) {
-                    // Inicia o processo de otimização E adição do timestamp
                     otimizarEAdicionarTimestamp(e.target.result, (finalBase64) => {
                         fotoBase64 = finalBase64;
-                        // Mostra a imagem processada (com o carimbo) no preview
                         const imgPreview = document.getElementById('preview-img');
                         imgPreview.src = finalBase64;
                         imgPreview.style.display = 'block';
@@ -393,7 +382,6 @@
             }
         }
 
-        // Função para reduzir tamanho da imagem e adicionar o carimbo de data/hora
         function otimizarEAdicionarTimestamp(base64Str, callback) {
             const img = new Image();
             img.src = base64Str;
@@ -401,12 +389,10 @@
                 const canvas = document.createElement('canvas');
                 const ctx = canvas.getContext('2d');
                 
-                // Define o tamanho máximo para otimização (ex: Full HD)
                 const MAX_WIDTH = 1280; 
                 let width = img.width;
                 let height = img.height;
 
-                // Redimensiona se necessário
                 if (width > MAX_WIDTH) {
                     height *= MAX_WIDTH / width;
                     width = MAX_WIDTH;
@@ -415,33 +401,38 @@
                 canvas.width = width;
                 canvas.height = height;
 
-                // 1. Desenha a imagem original no canvas
+                // 1. Desenha imagem
                 ctx.drawImage(img, 0, 0, width, height);
 
-                // 2. Configura e desenha o Carimbo de Data/Hora
+                // 2. Configurações da fonte
                 const dataHoraAgora = new Date().toLocaleString('pt-BR');
                 const textoTimestamp = `IPREGOBA Prova de Vida - ${dataHoraAgora}`;
 
-                // Configurações da fonte
-                const fontSize = Math.max(14, Math.floor(width * 0.025)); // Tamanho dinâmico baseado na largura da imagem, mínimo 14px
+                const fontSize = Math.max(16, Math.floor(width * 0.03));
                 ctx.font = `bold ${fontSize}px sans-serif`;
-                ctx.textAlign = 'right';
+                
+                // Medidas para o fundo preto
+                const metrics = ctx.measureText(textoTimestamp);
+                const textWidth = metrics.width;
+                const textHeight = fontSize * 1.2;
+                
+                const paddingX = Math.floor(width * 0.02);
+                const paddingY = Math.floor(height * 0.02);
+                
+                // Posição (Canto inferior direito)
+                const xPos = width - textWidth - paddingX - 10;
+                const yPos = height - paddingY - 10;
+
+                // 3. Desenha TARJA PRETA de fundo (para garantir leitura)
+                ctx.fillStyle = "rgba(0, 0, 0, 0.6)"; // Preto semi-transparente
+                ctx.fillRect(xPos - 10, yPos - textHeight + (fontSize * 0.3), textWidth + 20, textHeight);
+
+                // 4. Desenha o texto BRANCO por cima
+                ctx.fillStyle = "#ffffff";
+                ctx.textAlign = 'left'; 
                 ctx.textBaseline = 'bottom';
-
-                const paddingX = Math.floor(width * 0.02); // 2% de padding horizontal
-                const paddingY = Math.floor(height * 0.02); // 2% de padding vertical
-                const xPos = width - paddingX;
-                const yPos = height - paddingY;
-
-                // Adiciona sombra/contorno para garantir legibilidade em qualquer fundo
-                ctx.shadowColor = "rgba(0, 0, 0, 0.7)";
-                ctx.shadowOffsetX = 1;
-                ctx.shadowOffsetY = 1;
-                ctx.shadowBlur = 2;
-                ctx.fillStyle = "#ffffff"; // Cor do texto branco
                 ctx.fillText(textoTimestamp, xPos, yPos);
 
-                // Retorna a imagem processada em base64 (JPEG com qualidade 0.8)
                 callback(canvas.toDataURL('image/jpeg', 0.8));
             }
         }
@@ -476,7 +467,6 @@
             ctx.beginPath();
             const pos = getPos(e);
             ctx.moveTo(pos.x, pos.y);
-            // e.preventDefault(); // Removido para permitir scroll se tocar fora
         }
         
         function moveDraw(e) {
@@ -487,7 +477,7 @@
             ctx.strokeStyle = '#000';
             ctx.lineTo(pos.x, pos.y);
             ctx.stroke();
-            e.preventDefault(); // Impede scroll apenas enquanto desenha
+            e.preventDefault();
         }
         
         function endDraw() { isDrawing = false; }
@@ -510,7 +500,6 @@
 
         // --- 6. Gerar PDF e Compartilhar ---
         async function gerarECompartilharPDF() {
-            // Validações básicas
             const nome = document.getElementById('nome').value;
             const cpf = document.getElementById('cpf').value;
             const nascimento = document.getElementById('nascimento').value;
@@ -524,7 +513,6 @@
                 return;
             }
 
-            // Mostra loading
             document.getElementById('loadingOverlay').style.display = 'flex';
 
             try {
@@ -532,8 +520,7 @@
                 const margin = 15;
                 let yPos = 20;
 
-                // Cabeçalho
-                doc.setFillColor(0, 74, 143); // Azul IPREGOBA
+                doc.setFillColor(0, 74, 143);
                 doc.rect(0, 0, 210, 30, 'F');
                 doc.setTextColor(255, 255, 255);
                 doc.setFontSize(16);
@@ -543,7 +530,6 @@
                 doc.setFont("helvetica", "normal");
                 doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, 105, 22, { align: "center" });
 
-                // Dados Pessoais
                 yPos = 45;
                 doc.setTextColor(0, 0, 0);
                 doc.setFontSize(12);
@@ -559,13 +545,11 @@
                 yPos += 6;
                 doc.text(`Matrícula: ${document.getElementById('matricula').value || '---'}`, margin, yPos);
                 
-                // Formata data de nascimento para o PDF
                 const dataNascFormatada = nascimento ? new Date(nascimento).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : '---';
                 yPos += 6;
                 doc.text(`Data de Nascimento: ${dataNascFormatada}`, margin, yPos);
                 doc.text(`Estado Civil: ${document.getElementById('estado_civil').value || '---'}`, margin + 100, yPos);
                 
-                // Localização
                 yPos += 12;
                 doc.setFontSize(12);
                 doc.setFont("helvetica", "bold");
@@ -575,24 +559,18 @@
                 doc.setFontSize(10);
                 doc.setFont("helvetica", "normal");
                 
-                // Pega lat/long dos inputs
                 const lat = document.getElementById('gps_lat').value;
                 const long = document.getElementById('gps_long').value;
                 
                 doc.text(`Cidade Declarada: ${document.getElementById('cidade').value}`, margin, yPos);
                 yPos += 6;
                 
-                // --- Lógica do Link Google Maps no PDF ---
                 if (lat && long) {
                     const mapsLink = `https://www.google.com/maps?q=${lat},${long}`;
-                    
                     doc.text("GPS: ", margin, yPos);
-                    doc.setTextColor(0, 0, 255); // Azul para link
-                    // Adiciona texto clicável
+                    doc.setTextColor(0, 0, 255);
                     doc.textWithLink("Clique aqui para ver no Google Maps", margin + 10, yPos, { url: mapsLink });
-                    doc.setTextColor(0, 0, 0); // Volta para preto
-                    
-                    // Adiciona coordenadas em texto abaixo para caso de impressão física
+                    doc.setTextColor(0, 0, 0);
                     yPos += 5;
                     doc.setFontSize(8);
                     doc.setTextColor(100);
@@ -603,7 +581,6 @@
                     doc.text("GPS: Não capturado no momento do envio.", margin, yPos);
                 }
 
-                // Declarações
                 yPos += 12;
                 doc.setFontSize(12);
                 doc.setFont("helvetica", "bold");
@@ -623,14 +600,12 @@
                 yPos += 6;
                 doc.text(`Paga Pensão Alimentícia? ${pensao}`, margin, yPos);
 
-                // Foto (Selfie)
                 yPos += 15;
                 doc.setFontSize(12);
                 doc.setFont("helvetica", "bold");
                 doc.text("4. COMPROVAÇÃO VISUAL", margin, yPos);
                 
                 if (fotoBase64) {
-                    // Adiciona imagem (formato, x, y, w, h)
                     const imgProps = doc.getImageProperties(fotoBase64);
                     const imgWidth = 90;
                     const imgHeight = (imgProps.height * imgWidth) / imgProps.width;
@@ -638,8 +613,7 @@
                     yPos += imgHeight + 10;
                 }
 
-                // Assinatura
-                if (yPos > 220) { doc.addPage(); yPos = 20; } // Nova página se necessário
+                if (yPos > 220) { doc.addPage(); yPos = 20; }
                 
                 yPos += 15;
                 doc.text("5. ASSINATURA", margin, yPos);
@@ -651,13 +625,9 @@
                 doc.setFontSize(8);
                 doc.text("Assinatura do Segurado", margin, yPos + 50);
 
-                // Gerar o Blob do PDF
                 const pdfBlob = doc.output('blob');
-                
-                // Criar arquivo para compartilhamento
                 const file = new File([pdfBlob], `ProvaVida_${nome.split(' ')[0]}.pdf`, { type: "application/pdf" });
 
-                // Tentar compartilhar nativamente
                 if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
                     await navigator.share({
                         files: [file],
@@ -665,8 +635,6 @@
                         text: `Segue em anexo a prova de vida de ${nome}.`,
                     });
                 } else {
-                    // Fallback para navegadores que não suportam share de arquivos (PC)
-                    // Cria um link de download
                     const link = document.createElement('a');
                     link.href = URL.createObjectURL(pdfBlob);
                     link.download = `ProvaVida_${nome}.pdf`;
